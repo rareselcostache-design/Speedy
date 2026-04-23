@@ -57,4 +57,13 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.material.icons.extended)
+
+    // OSMDroid
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
+
+    // Navigation Compose
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // Location GPS
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }

@@ -1,15 +1,11 @@
 package com.unitbv.speedy.screens
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,17 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-val OrangeMain = Color(0xFFFF6B00)
-val OrangeLight = Color(0xFFFF8C3A)
-val OrangePale = Color(0xFFFFF0E6)
-val White = Color(0xFFFFFFFF)
-val GrayText = Color(0xFF9E9E9E)
-val DarkText = Color(0xFF1A1A1A)
-val BorderColor = Color(0xFFE8E8E8)
 
 @Composable
 fun LoginScreen(
@@ -46,67 +33,70 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(White)
+            .background(DarkBg)
     ) {
-        // Orange accent blob top-right
+        // Orange glow top
         Box(
             modifier = Modifier
-                .size(220.dp)
-                .offset(x = 120.dp, y = (-60).dp)
+                .size(320.dp)
+                .offset(x = 60.dp, y = (-80).dp)
                 .background(
                     brush = Brush.radialGradient(
-                        colors = listOf(OrangeLight.copy(alpha = 0.25f), Color.Transparent)
-                    ),
-                    shape = RoundedCornerShape(50)
+                        colors = listOf(
+                            OrangePrimary.copy(alpha = 0.15f),
+                            Color.Transparent
+                        )
+                    )
                 )
         )
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(horizontal = 28.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start
         ) {
-            // Logo / Brand mark
+            // Logo
             Box(
                 modifier = Modifier
                     .size(52.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(
                         brush = Brush.linearGradient(
-                            colors = listOf(OrangeMain, OrangeLight)
+                            colors = listOf(OrangePrimary, Color(0xFFFF8C3A))
                         )
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Speedy",
-                    color = White,
+                    text = "S",
+                    color = Color.White,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(Modifier.height(28.dp))
 
             Text(
                 text = "Welcome back",
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
-                color = DarkText
+                color = Color.White
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 text = "Sign in to continue",
                 fontSize = 15.sp,
-                color = GrayText
+                color = Color.White.copy(alpha = 0.45f)
             )
 
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(Modifier.height(40.dp))
 
             // Email field
-            SpeedyTextField(
+            DarkTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = "Email address",
@@ -114,17 +104,17 @@ fun LoginScreen(
                     Icon(
                         Icons.Outlined.Email,
                         contentDescription = null,
-                        tint = if (email.isNotEmpty()) OrangeMain else GrayText,
+                        tint = if (email.isNotEmpty()) OrangePrimary else Color.White.copy(alpha = 0.3f),
                         modifier = Modifier.size(20.dp)
                     )
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(Modifier.height(14.dp))
 
             // Password field
-            SpeedyTextField(
+            DarkTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = "Password",
@@ -132,7 +122,7 @@ fun LoginScreen(
                     Icon(
                         Icons.Outlined.Lock,
                         contentDescription = null,
-                        tint = if (password.isNotEmpty()) OrangeMain else GrayText,
+                        tint = if (password.isNotEmpty()) OrangePrimary else Color.White.copy(alpha = 0.3f),
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -141,7 +131,7 @@ fun LoginScreen(
                         Icon(
                             if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                             contentDescription = null,
-                            tint = GrayText,
+                            tint = Color.White.copy(alpha = 0.3f),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -150,28 +140,28 @@ fun LoginScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
 
             // Forgot password
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                 TextButton(onClick = onForgotPasswordClick) {
                     Text(
                         text = "Forgot password?",
-                        color = OrangeMain,
+                        color = OrangePrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
 
             // Login button
             Button(
                 onClick = { onLoginClick(email, password) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(54.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                 contentPadding = PaddingValues(0.dp),
@@ -182,7 +172,7 @@ fun LoginScreen(
                         .fillMaxSize()
                         .background(
                             brush = Brush.linearGradient(
-                                colors = listOf(OrangeMain, OrangeLight)
+                                colors = listOf(OrangePrimary, Color(0xFFFF8C3A))
                             ),
                             shape = RoundedCornerShape(14.dp)
                         ),
@@ -190,32 +180,38 @@ fun LoginScreen(
                 ) {
                     Text(
                         text = "Sign In",
-                        color = White,
+                        color = Color.White,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
 
             // Divider
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Divider(modifier = Modifier.weight(1f), color = BorderColor)
+                Divider(
+                    modifier = Modifier.weight(1f),
+                    color = Color.White.copy(alpha = 0.08f)
+                )
                 Text(
                     text = "  or  ",
-                    color = GrayText,
+                    color = Color.White.copy(alpha = 0.3f),
                     fontSize = 13.sp
                 )
-                Divider(modifier = Modifier.weight(1f), color = BorderColor)
+                Divider(
+                    modifier = Modifier.weight(1f),
+                    color = Color.White.copy(alpha = 0.08f)
+                )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // Sign up prompt
+            // Sign up
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -223,7 +219,7 @@ fun LoginScreen(
             ) {
                 Text(
                     text = "Don't have an account? ",
-                    color = GrayText,
+                    color = Color.White.copy(alpha = 0.4f),
                     fontSize = 14.sp
                 )
                 TextButton(
@@ -232,7 +228,7 @@ fun LoginScreen(
                 ) {
                     Text(
                         text = "Sign Up",
-                        color = OrangeMain,
+                        color = OrangePrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -244,7 +240,7 @@ fun LoginScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpeedyTextField(
+fun DarkTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
@@ -257,9 +253,7 @@ fun SpeedyTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
-        label = {
-            Text(label, fontSize = 14.sp)
-        },
+        label = { Text(label, fontSize = 14.sp) },
         leadingIcon = leadingIcon,
         trailingIcon = trailingIcon,
         visualTransformation = visualTransformation,
@@ -267,15 +261,15 @@ fun SpeedyTextField(
         shape = RoundedCornerShape(14.dp),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = OrangeMain,
-            unfocusedBorderColor = BorderColor,
-            focusedLabelColor = OrangeMain,
-            unfocusedLabelColor = GrayText,
-            cursorColor = OrangeMain,
-            focusedTextColor = DarkText,
-            unfocusedTextColor = DarkText,
-            unfocusedContainerColor = Color(0xFFFAFAFA),
-            focusedContainerColor = White
+            focusedBorderColor = OrangePrimary,
+            unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+            focusedLabelColor = OrangePrimary,
+            unfocusedLabelColor = Color.White.copy(alpha = 0.3f),
+            cursorColor = OrangePrimary,
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+            focusedContainerColor = Color.White.copy(alpha = 0.07f)
         )
     )
 }

@@ -36,34 +36,39 @@ fun SignUpScreen(
     var termsAccepted by remember { mutableStateOf(false) }
 
     val passwordMismatch = confirmPassword.isNotEmpty() && password != confirmPassword
+    val isFormValid = name.isNotEmpty() &&
+            email.isNotEmpty() &&
+            password.isNotEmpty() &&
+            !passwordMismatch &&
+            termsAccepted
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(White)
+            .background(DarkBg)
     ) {
-        // Decorative orange blob bottom-left
+        // Orange glow bottom-left
         Box(
             modifier = Modifier
-                .size(200.dp)
+                .size(280.dp)
                 .align(Alignment.BottomStart)
-                .offset(x = (-60).dp, y = 60.dp)
+                .offset(x = (-80).dp, y = 80.dp)
                 .background(
                     brush = Brush.radialGradient(
-                        colors = listOf(OrangeLight.copy(alpha = 0.2f), Color.Transparent)
-                    ),
-                    shape = RoundedCornerShape(50)
+                        colors = listOf(OrangePrimary.copy(alpha = 0.12f), Color.Transparent)
+                    )
                 )
         )
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp, vertical = 40.dp),
+                .padding(horizontal = 28.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            // Back nav + logo row
+            // Top bar
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -72,14 +77,14 @@ fun SignUpScreen(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(OrangePale),
+                        .background(Color.White.copy(alpha = 0.07f)),
                     contentAlignment = Alignment.Center
                 ) {
                     IconButton(onClick = onLoginClick, modifier = Modifier.size(40.dp)) {
                         Icon(
                             Icons.Outlined.ArrowBack,
                             contentDescription = "Back",
-                            tint = OrangeMain,
+                            tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -91,14 +96,14 @@ fun SignUpScreen(
                         .clip(RoundedCornerShape(10.dp))
                         .background(
                             brush = Brush.linearGradient(
-                                colors = listOf(OrangeMain, OrangeLight)
+                                colors = listOf(OrangePrimary, Color(0xFFFF8C3A))
                             )
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "S",
-                        color = White,
+                        color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
@@ -111,19 +116,18 @@ fun SignUpScreen(
                 text = "Create account",
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
-                color = DarkText
+                color = Color.White
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Fill in the details to get started",
                 fontSize = 15.sp,
-                color = GrayText
+                color = Color.White.copy(alpha = 0.45f)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(36.dp))
 
-            // Name
-            SpeedyTextField(
+            DarkTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = "Full name",
@@ -131,7 +135,7 @@ fun SignUpScreen(
                     Icon(
                         Icons.Outlined.Person,
                         contentDescription = null,
-                        tint = if (name.isNotEmpty()) OrangeMain else GrayText,
+                        tint = if (name.isNotEmpty()) OrangePrimary else Color.White.copy(alpha = 0.3f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -139,8 +143,7 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Email
-            SpeedyTextField(
+            DarkTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = "Email address",
@@ -148,7 +151,7 @@ fun SignUpScreen(
                     Icon(
                         Icons.Outlined.Email,
                         contentDescription = null,
-                        tint = if (email.isNotEmpty()) OrangeMain else GrayText,
+                        tint = if (email.isNotEmpty()) OrangePrimary else Color.White.copy(alpha = 0.3f),
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -157,8 +160,7 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Password
-            SpeedyTextField(
+            DarkTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = "Password",
@@ -166,7 +168,7 @@ fun SignUpScreen(
                     Icon(
                         Icons.Outlined.Lock,
                         contentDescription = null,
-                        tint = if (password.isNotEmpty()) OrangeMain else GrayText,
+                        tint = if (password.isNotEmpty()) OrangePrimary else Color.White.copy(alpha = 0.3f),
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -175,7 +177,7 @@ fun SignUpScreen(
                         Icon(
                             if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                             contentDescription = null,
-                            tint = GrayText,
+                            tint = Color.White.copy(alpha = 0.3f),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -186,8 +188,7 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Confirm password
-            SpeedyTextField(
+            DarkTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
                 label = "Confirm password",
@@ -196,7 +197,7 @@ fun SignUpScreen(
                         Icons.Outlined.LockOpen,
                         contentDescription = null,
                         tint = when {
-                            confirmPassword.isEmpty() -> GrayText
+                            confirmPassword.isEmpty() -> Color.White.copy(alpha = 0.3f)
                             passwordMismatch -> Color(0xFFE53935)
                             else -> Color(0xFF43A047)
                         },
@@ -208,7 +209,7 @@ fun SignUpScreen(
                         Icon(
                             if (confirmPasswordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                             contentDescription = null,
-                            tint = GrayText,
+                            tint = Color.White.copy(alpha = 0.3f),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -218,7 +219,7 @@ fun SignUpScreen(
             )
 
             if (passwordMismatch) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "Passwords do not match",
                     color = Color(0xFFE53935),
@@ -238,45 +239,32 @@ fun SignUpScreen(
                     checked = termsAccepted,
                     onCheckedChange = { termsAccepted = it },
                     colors = CheckboxDefaults.colors(
-                        checkedColor = OrangeMain,
-                        uncheckedColor = BorderColor,
-                        checkmarkColor = White
+                        checkedColor = OrangePrimary,
+                        uncheckedColor = Color.White.copy(alpha = 0.2f),
+                        checkmarkColor = Color.White
                     )
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "I agree to the ",
-                    color = GrayText,
-                    fontSize = 13.sp
-                )
-                TextButton(
-                    onClick = { },
-                    contentPadding = PaddingValues(0.dp)
-                ) {
+                Text(text = "I agree to the ", color = Color.White.copy(alpha = 0.4f), fontSize = 13.sp)
+                TextButton(onClick = {}, contentPadding = PaddingValues(0.dp)) {
                     Text(
                         text = "Terms & Privacy Policy",
-                        color = OrangeMain,
+                        color = OrangePrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // Sign Up button
-            val isFormValid = name.isNotEmpty() &&
-                    email.isNotEmpty() &&
-                    password.isNotEmpty() &&
-                    !passwordMismatch &&
-                    termsAccepted
-
+            // Sign up button
             Button(
                 onClick = { onSignUpClick(name, email, password) },
                 enabled = isFormValid,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(54.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Transparent,
@@ -290,16 +278,19 @@ fun SignUpScreen(
                         .fillMaxSize()
                         .background(
                             brush = if (isFormValid)
-                                Brush.linearGradient(colors = listOf(OrangeMain, OrangeLight))
+                                Brush.linearGradient(colors = listOf(OrangePrimary, Color(0xFFFF8C3A)))
                             else
-                                Brush.linearGradient(colors = listOf(Color(0xFFCCCCCC), Color(0xFFDDDDDD))),
+                                Brush.linearGradient(colors = listOf(
+                                    Color.White.copy(alpha = 0.08f),
+                                    Color.White.copy(alpha = 0.08f)
+                                )),
                             shape = RoundedCornerShape(14.dp)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Create Account",
-                        color = White,
+                        color = if (isFormValid) Color.White else Color.White.copy(alpha = 0.3f),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -308,7 +299,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Login prompt
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -316,16 +306,13 @@ fun SignUpScreen(
             ) {
                 Text(
                     text = "Already have an account? ",
-                    color = GrayText,
+                    color = Color.White.copy(alpha = 0.4f),
                     fontSize = 14.sp
                 )
-                TextButton(
-                    onClick = onLoginClick,
-                    contentPadding = PaddingValues(0.dp)
-                ) {
+                TextButton(onClick = onLoginClick, contentPadding = PaddingValues(0.dp)) {
                     Text(
                         text = "Sign In",
-                        color = OrangeMain,
+                        color = OrangePrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
