@@ -15,8 +15,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.unitbv.speedy.viewmodel.HistoryViewModel
+import com.unitbv.speedy.viewmodel.toDisplayEntry
 
-// Mock data — colegul tau inlocuieste cu date reale din API
 data class RunEntry(
     val id: Int,
     val date: String,
@@ -37,7 +39,16 @@ val mockRuns = listOf(
 )
 
 @Composable
-fun HistoryScreen(onBack: () -> Unit = {}) {
+fun HistoryScreen(
+    onBack: () -> Unit = {},
+    vm: HistoryViewModel = viewModel()
+) {
+
+    val runs by vm.runs.collectAsState()
+    val displayRuns = runs.map { it.toDisplayEntry() }
+
+    val weeklyKm = runs.sumOf { it.distanceMeters.toDouble() / 1000.0 }
+    val weeklyCal = runs.sumOf { it.caloriesBurned.toDouble() }
     Column(
         modifier = Modifier
             .fillMaxSize()

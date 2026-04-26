@@ -21,79 +21,129 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.delay
+import androidx.lifecycle.viewmodel.compose.viewModel
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.TilesOverlay
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import android.preference.PreferenceManager
+import com.unitbv.speedy.R
+import com.unitbv.speedy.viewmodel.RunTrackingViewModel
 
 @Composable
 fun RunTrackingScreen(
-    onFinish: () -> Unit = {}
+    onFinish: () -> Unit = {},
+    vm: RunTrackingViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    var hasLocationPermission by remember {
+
+    var hasPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED
         )
     }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasLocationPermission = granted
-    }
+    val permLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { hasPermission = it }
 
     LaunchedEffect(Unit) {
-        if (!hasLocationPermission) {
-            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
+        if (!hasPermission) permLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
-    // Timer state
-    var seconds by remember { mutableStateOf(0) }
-    var isRunning by remember { mutableStateOf(true) }
+    val seconds by vm.seconds.collectAsState()
+    val distanceMeters by vm.distanceMeters.collectAsState()
+    val isRunning by vm.isRunning.collectAsState()
+    val currentLocation by vm.currentLocation.collectAsState()
+    val routePoints by vm.routePoints.collectAsState()
 
-    LaunchedEffect(isRunning) {
-        while (isRunning) {
-            delay(1000)
-            seconds++
+    var mapViewRef by remember { mutableStateOf<MapView?>(null) }
+    var locationMarker by remember { mutableStateOf<org.osmdroid.views.overlay.Marker?>(null) }
+    var borderPolyline by remember { mutableStateOf<org.osmdroid.views.overlay.Polyline?>(null) }
+    var routePolyline by remember { mutableStateOf<org.osmdroid.views.overlay.Polyline?>(null) }
+
+    val distanceKm = distanceMeters / 1000f
+    val paceStr = if (seconds > 30 && distanceKm > 0.01f) {
+        val paceMin = (seconds / 60f / distanceKm).toInt()
+        val paceSec = ((seconds / 60f / distanceKm - paceMin) * 60).toInt()
+        "%d:%02d".format(paceMin, paceSec)
+    } else "--:--"
+    val calories = (distanceKm * 70).toInt()
+
+    // Urmărire locație + marker
+    LaunchedEffect(currentLocation) {
+        val loc = currentLocation ?: return@LaunchedEffect
+        val map = mapViewRef ?: return@LaunchedEffect
+
+        map.controller.animateTo(loc)
+
+        if (locationMarker == null) {
+            val marker = org.osmdroid.views.overlay.Marker(map).apply {
+                icon = ContextCompat.getDrawable(context, R.drawable.location_dot)
+                setAnchor(
+                    org.osmdroid.views.overlay.Marker.ANCHOR_CENTER,
+                    org.osmdroid.views.overlay.Marker.ANCHOR_CENTER
+                )
+            }
+            map.overlays.add(marker)
+            locationMarker = marker
         }
+        locationMarker?.position = loc
+        map.invalidate()
     }
 
-    // Mock stats — colegul tau va inlocui cu date reale din backend
-    val distance by remember { mutableStateOf(0.0f) }
-    val pace = if (seconds > 0 && distance > 0) (seconds / 60f / distance).toInt() else 0
-    val calories = (distance * 70).toInt()
+    // Traseu polyline
+    LaunchedEffect(routePoints) {
+        val map = mapViewRef ?: return@LaunchedEffect
+        if (routePoints.size < 2) return@LaunchedEffect
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBg)
-    ) {
-        // Harta full screen
+        // Creează polyline-urile la primul punct
+        if (borderPolyline == null) {
+            val border = org.osmdroid.views.overlay.Polyline(map).apply {
+                outlinePaint.color = android.graphics.Color.WHITE
+                outlinePaint.strokeWidth = 20f
+                outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+                outlinePaint.strokeJoin = android.graphics.Paint.Join.ROUND
+                outlinePaint.alpha = 80
+                outlinePaint.isAntiAlias = true
+            }
+            val route = org.osmdroid.views.overlay.Polyline(map).apply {
+                outlinePaint.color = android.graphics.Color.parseColor("#FF6B00")
+                outlinePaint.strokeWidth = 14f
+                outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+                outlinePaint.strokeJoin = android.graphics.Paint.Join.ROUND
+                outlinePaint.isAntiAlias = true
+            }
+            map.overlays.add(0, border)
+            map.overlays.add(1, route)
+            borderPolyline = border
+            routePolyline = route
+        }
+
+        borderPolyline?.setPoints(routePoints.toMutableList())
+        routePolyline?.setPoints(routePoints.toMutableList())
+        map.invalidate()
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
+
         AndroidView(
             modifier = Modifier.fillMaxSize(),
-            factory = {
-                Configuration.getInstance().apply {
-                    load(context, PreferenceManager.getDefaultSharedPreferences(context))
-                    userAgentValue = context.packageName
-                }
-                MapView(context).apply {
+            factory = { ctx ->
+                MapView(ctx).apply {
                     setTileSource(TileSourceFactory.MAPNIK)
                     setMultiTouchControls(true)
-                    controller.setZoom(17.0)
-                    controller.setCenter(GeoPoint(45.6427, 25.5887))
+                    controller.setZoom(18.0)
                     overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERT_COLORS)
+                    isTilesScaledToDpi = true
+                    setUseDataConnection(true)
+                    mapViewRef = this
                 }
             }
         )
 
-        // Timer bar top
+        // Top stats bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -101,10 +151,7 @@ fun RunTrackingScreen(
                 .padding(16.dp)
                 .align(Alignment.TopCenter)
         ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = Color(0xEE0D0D0D)
-            ) {
+            Surface(shape = RoundedCornerShape(16.dp), color = Color(0xEE0D0D0D)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -112,40 +159,22 @@ fun RunTrackingScreen(
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TrackingStat(
-                        value = formatTime(seconds),
-                        label = "Time"
-                    )
+                    TrackingStat(formatTime(seconds), "Time")
                     Divider(
-                        modifier = Modifier
-                            .height(32.dp)
-                            .width(1.dp),
+                        modifier = Modifier.height(32.dp).width(1.dp),
                         color = Color.White.copy(alpha = 0.1f)
                     )
-                    TrackingStat(
-                        value = "0.0",
-                        label = "KM"
-                    )
+                    TrackingStat("%.2f".format(distanceKm), "KM")
                     Divider(
-                        modifier = Modifier
-                            .height(32.dp)
-                            .width(1.dp),
+                        modifier = Modifier.height(32.dp).width(1.dp),
                         color = Color.White.copy(alpha = 0.1f)
                     )
-                    TrackingStat(
-                        value = "--:--",
-                        label = "Pace"
-                    )
+                    TrackingStat(paceStr, "Pace")
                     Divider(
-                        modifier = Modifier
-                            .height(32.dp)
-                            .width(1.dp),
+                        modifier = Modifier.height(32.dp).width(1.dp),
                         color = Color.White.copy(alpha = 0.1f)
                     )
-                    TrackingStat(
-                        value = "0",
-                        label = "Cal"
-                    )
+                    TrackingStat("$calories", "Cal")
                 }
             }
         }
@@ -162,91 +191,40 @@ fun RunTrackingScreen(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Drag handle
                 Box(
                     modifier = Modifier
                         .width(36.dp)
                         .height(4.dp)
                         .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp))
                 )
-
                 Spacer(Modifier.height(24.dp))
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Pause / Resume
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        FloatingActionButton(
-                            onClick = { isRunning = !isRunning },
-                            shape = CircleShape,
-                            containerColor = Color.White.copy(alpha = 0.1f),
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                if (isRunning) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = if (isRunning) "Pause" else "Resume",
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.5f)
-                        )
-                    }
-
-                    // Stop
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        FloatingActionButton(
-                            onClick = onFinish,
-                            shape = CircleShape,
-                            containerColor = Color(0xFFE53935),
-                            modifier = Modifier.size(68.dp)
-                        ) {
-                            Icon(
-                                Icons.Outlined.Stop,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = "Finish",
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.5f)
-                        )
-                    }
-
-                    // Lock screen
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        FloatingActionButton(
-                            onClick = { },
-                            shape = CircleShape,
-                            containerColor = Color.White.copy(alpha = 0.1f),
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                Icons.Outlined.Lock,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = "Lock",
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.5f)
-                        )
-                    }
+                    ControlButton(
+                        icon = if (isRunning) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                        label = if (isRunning) "Pause" else "Resume",
+                        size = 56,
+                        containerColor = Color.White.copy(alpha = 0.1f),
+                        onClick = { vm.togglePause() }
+                    )
+                    ControlButton(
+                        icon = Icons.Outlined.Stop,
+                        label = "Finish",
+                        size = 68,
+                        containerColor = Color(0xFFE53935),
+                        onClick = { vm.finishRun(onFinish) }
+                    )
+                    ControlButton(
+                        icon = Icons.Outlined.Lock,
+                        label = "Lock",
+                        size = 56,
+                        containerColor = Color.White.copy(alpha = 0.1f),
+                        onClick = {}
+                    )
                 }
-
                 Spacer(Modifier.navigationBarsPadding())
             }
         }
@@ -270,13 +248,37 @@ fun TrackingStat(value: String, label: String) {
     }
 }
 
+@Composable
+fun ControlButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    size: Int,
+    containerColor: Color,
+    onClick: () -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        FloatingActionButton(
+            onClick = onClick,
+            shape = CircleShape,
+            containerColor = containerColor,
+            modifier = Modifier.size(size.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size((size * 0.42f).dp)
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(label, fontSize = 11.sp, color = Color.White.copy(alpha = 0.5f))
+    }
+}
+
 fun formatTime(seconds: Int): String {
     val h = seconds / 3600
     val m = (seconds % 3600) / 60
     val s = seconds % 60
-    return if (h > 0) {
-        "%d:%02d:%02d".format(h, m, s)
-    } else {
-        "%02d:%02d".format(m, s)
-    }
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s)
+    else "%02d:%02d".format(m, s)
 }

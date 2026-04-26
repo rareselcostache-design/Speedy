@@ -16,6 +16,8 @@ import com.unitbv.speedy.screens.RunSetupScreen
 import com.unitbv.speedy.screens.RunTrackingScreen
 import com.unitbv.speedy.screens.SignUpScreen
 import com.unitbv.speedy.ui.theme.SpeedyTheme
+import org.osmdroid.config.Configuration
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,6 +25,16 @@ class MainActivity : ComponentActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
+
+        Configuration.getInstance().apply {
+            load(applicationContext, getSharedPreferences("osmdroid", MODE_PRIVATE))
+            userAgentValue = packageName
+            osmdroidTileCache = File(cacheDir, "osmdroid")
+            tileFileSystemCacheTrimBytes = 100L * 1024 * 1024
+            tileFileSystemCacheMaxBytes = 200L * 1024 * 1024
+            tileDownloadThreads = 4
+            tileFileSystemThreads = 4
+        }
 
         setContent {
             SpeedyTheme {
