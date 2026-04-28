@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun ProfileScreen(onBack: () -> Unit = {}) {
+fun ProfileScreen(onBack: () -> Unit = {},onLogout: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()

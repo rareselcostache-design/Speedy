@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "468306754243",
+    "project_id": "speedy-4cb87",
+    "storage_bucket": "speedy-4cb87.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:468306754243:android:17ce31dc2443d726420076",
+        "android_client_info": {
+          "package_name": "com.unitbv.speedy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNB1HboWBcpw55WbDGRQpL3UIFeIt-yGk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

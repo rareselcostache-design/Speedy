@@ -32,7 +32,7 @@ import com.unitbv.speedy.R
 import com.unitbv.speedy.viewmodel.RunTrackingViewModel
 
 @Composable
-fun RunTrackingScreen(
+fun RunTrackingScreen(targetDistance: String = "800m",
     onFinish: () -> Unit = {},
     vm: RunTrackingViewModel = viewModel()
 ) {

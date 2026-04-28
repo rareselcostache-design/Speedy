@@ -1,27 +1,44 @@
 package com.unitbv.speedy
 
+import android.Manifest
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.unitbv.speedy.screens.HistoryScreen
-import com.unitbv.speedy.screens.LoginScreen
-import com.unitbv.speedy.screens.MainScreen
-import com.unitbv.speedy.screens.ProfileScreen
-import com.unitbv.speedy.screens.RunSetupScreen
-import com.unitbv.speedy.screens.RunTrackingScreen
-import com.unitbv.speedy.screens.SignUpScreen
+import androidx.navigation.navArgument
+import com.google.firebase.auth.FirebaseAuth
+import com.unitbv.speedy.screens.*
 import com.unitbv.speedy.ui.theme.SpeedyTheme
 import org.osmdroid.config.Configuration
 import java.io.File
 
 class MainActivity : ComponentActivity() {
+
+    // Instanța Firebase Auth pentru Backend
+    private lateinit var auth: FirebaseAuth
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        if (!fineLocationGranted) {
+            Toast.makeText(this, "Aplicația are nevoie de GPS pentru tracking!", Toast.LENGTH_LONG).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Inițializare Firebase
+        auth = FirebaseAuth.getInstance()
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
@@ -30,34 +47,76 @@ class MainActivity : ComponentActivity() {
             load(applicationContext, getSharedPreferences("osmdroid", MODE_PRIVATE))
             userAgentValue = packageName
             osmdroidTileCache = File(cacheDir, "osmdroid")
-            tileFileSystemCacheTrimBytes = 100L * 1024 * 1024
-            tileFileSystemCacheMaxBytes = 200L * 1024 * 1024
-            tileDownloadThreads = 4
-            tileFileSystemThreads = 4
         }
+
+        requestPermissionLauncher.launch(arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ))
 
         setContent {
             SpeedyTheme {
-                AppNavigation()
+                // Pasăm instanța auth către navigație
+                AppNavigation(auth)
             }
         }
     }
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(auth: FirebaseAuth) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+
+    // Backend Logic: Dacă user-ul e deja logat, mergem direct la Main
+    val startDestination = if (auth.currentUser != null) "main" else "login"
 
     NavHost(
         navController = navController,
-        startDestination = "login"
+        startDestination = startDestination
     ) {
         composable("login") {
             LoginScreen(
-                onLoginClick = { _, _ -> navController.navigate("main") },
+                onLoginClick = { email, password ->
+                    if (email.isNotEmpty() && password.isNotEmpty()) {
+                        auth.signInWithEmailAndPassword(email, password)
+                            .addOnCompleteListener { task ->
+                                if (task.isSuccessful) {
+                                    navController.navigate("main") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Eroare Login: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                    } else {
+                        Toast.makeText(context, "Completează toate câmpurile!", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 onSignUpClick = { navController.navigate("signup") }
             )
         }
+
+        composable("signup") {
+            SignUpScreen(
+                onSignUpClick = { name, email, password ->
+                    if (email.isNotEmpty() && password.isNotEmpty()) {
+                        auth.createUserWithEmailAndPassword(email, password)
+                            .addOnCompleteListener { task ->
+                                if (task.isSuccessful) {
+                                    navController.navigate("main") {
+                                        popUpTo("signup") { inclusive = true }
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Eroare Sign Up: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                    }
+                },
+                onLoginClick = { navController.popBackStack() }
+            )
+        }
+
         composable("main") {
             MainScreen(
                 onRunClick = { navController.navigate("run_setup") },
@@ -65,20 +124,23 @@ fun AppNavigation() {
                 onProfileClick = { navController.navigate("profile") }
             )
         }
-        composable("signup") {
-            SignUpScreen(
-                onSignUpClick = { _, _, _ -> navController.navigate("main") },
-                onLoginClick = { navController.popBackStack() }
-            )
-        }
+
         composable("run_setup") {
             RunSetupScreen(
-                onStartRun = { navController.navigate("run_tracking") },
+                onStartRun = { distance ->
+                    navController.navigate("run_tracking/$distance")
+                },
                 onBack = { navController.popBackStack() }
             )
         }
-        composable("run_tracking") {
+
+        composable(
+            route = "run_tracking/{distance}",
+            arguments = listOf(navArgument("distance") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val dist = backStackEntry.arguments?.getString("distance") ?: "800m"
             RunTrackingScreen(
+                targetDistance = dist,
                 onFinish = {
                     navController.navigate("main") {
                         popUpTo("main") { inclusive = false }
@@ -86,22 +148,21 @@ fun AppNavigation() {
                 }
             )
         }
+
         composable("history") {
-            HistoryScreen(
-                onBack = { navController.popBackStack() }
-            )
+            HistoryScreen(onBack = { navController.popBackStack() })
         }
-        composable("history") {
-            HistoryScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
+
         composable("profile") {
             ProfileScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onLogout = {
+                    auth.signOut()
+                    navController.navigate("login") {
+                        popUpTo(0)
+                    }
+                }
             )
         }
-
-
     }
 }
