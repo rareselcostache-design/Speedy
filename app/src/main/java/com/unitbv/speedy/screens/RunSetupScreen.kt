@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun RunSetupScreen(
-    onStartRun: (String) -> Unit = {},
+    onStartRun: (String, String) -> Unit = { _, _ -> },  // distance + type
     onBack: () -> Unit = {}
 ) {
     var selectedType by remember { mutableStateOf("Easy") }
@@ -39,7 +39,6 @@ fun RunSetupScreen(
             .background(DarkBg)
             .statusBarsPadding()
     ) {
-        // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -55,7 +54,6 @@ fun RunSetupScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Run type selector
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             SectionLabel("Run type")
             Spacer(Modifier.height(12.dp))
@@ -78,7 +76,6 @@ fun RunSetupScreen(
 
         Spacer(Modifier.height(28.dp))
 
-        // Distance selector
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             SectionLabel("Target distance")
             Spacer(Modifier.height(16.dp))
@@ -139,7 +136,6 @@ fun RunSetupScreen(
 
         Spacer(Modifier.height(28.dp))
 
-        // Estimated stats
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             SectionLabel("Estimated")
             Spacer(Modifier.height(12.dp))
@@ -164,7 +160,7 @@ fun RunSetupScreen(
         Spacer(Modifier.weight(1f))
 
         Button(
-            onClick = { onStartRun("$selectedDistance km") },
+            onClick = { onStartRun("$selectedDistance km", selectedType) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
@@ -181,13 +177,19 @@ fun RunSetupScreen(
     }
 }
 
-// Sub-componentele
 @Composable fun SectionLabel(text: String) {
     Text(text.uppercase(), fontSize = 11.sp, color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Medium)
 }
 
 @Composable fun RunTypeCard(label: String, icon: ImageVector, subtitle: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(modifier = modifier.clip(RoundedCornerShape(14.dp)).background(if (selected) OrangePrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)).border(1.dp, if (selected) OrangePrimary.copy(alpha = 0.6f) else Color.Transparent, RoundedCornerShape(14.dp)).clickable { onClick() }.padding(12.dp)) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) OrangePrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f))
+            .border(1.dp, if (selected) OrangePrimary.copy(alpha = 0.6f) else Color.Transparent, RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+            .padding(12.dp)
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(icon, null, tint = if (selected) OrangePrimary else Color.White.copy(alpha = 0.4f), modifier = Modifier.size(24.dp))
             Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
@@ -197,7 +199,14 @@ fun RunSetupScreen(
 }
 
 @Composable fun DistanceChip(km: Int, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(modifier = modifier.clip(RoundedCornerShape(10.dp)).background(if (selected) OrangePrimary else Color.White.copy(alpha = 0.07f)).clickable { onClick() }.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) OrangePrimary else Color.White.copy(alpha = 0.07f))
+            .clickable { onClick() }
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
         Text("${km}k", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
     }
 }

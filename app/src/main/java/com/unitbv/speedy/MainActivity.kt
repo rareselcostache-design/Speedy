@@ -127,20 +127,25 @@ fun AppNavigation(auth: FirebaseAuth) {
 
         composable("run_setup") {
             RunSetupScreen(
-                onStartRun = { distance ->
-                    navController.navigate("run_tracking/$distance")
+                onStartRun = { distance, type ->
+                    navController.navigate("run_tracking/$distance/$type")
                 },
                 onBack = { navController.popBackStack() }
             )
         }
 
         composable(
-            route = "run_tracking/{distance}",
-            arguments = listOf(navArgument("distance") { type = NavType.StringType })
+            route = "run_tracking/{distance}/{type}",
+            arguments = listOf(
+                navArgument("distance") { type = NavType.StringType },
+                navArgument("type") { type = NavType.StringType }
+            )
         ) { backStackEntry ->
-            val dist = backStackEntry.arguments?.getString("distance") ?: "800m"
+            val dist = backStackEntry.arguments?.getString("distance") ?: "5 km"
+            val type = backStackEntry.arguments?.getString("type") ?: "Easy"
             RunTrackingScreen(
                 targetDistance = dist,
+                runType = type,
                 onFinish = {
                     navController.navigate("main") {
                         popUpTo("main") { inclusive = false }

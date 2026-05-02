@@ -29,26 +29,18 @@ data class RunEntry(
     val type: String
 )
 
-val mockRuns = listOf(
-    RunEntry(1, "Today, 08:30", "5.2 km", "28:14", "5:26/km", 312, "Tempo"),
-    RunEntry(2, "Yesterday, 07:15", "3.0 km", "21:00", "7:00/km", 210, "Easy"),
-    RunEntry(3, "Mon, 18:00", "10.0 km", "52:30", "5:15/km", 700, "Race"),
-    RunEntry(4, "Sun, 09:00", "6.5 km", "39:00", "6:00/km", 455, "Easy"),
-    RunEntry(5, "Fri, 17:30", "4.0 km", "22:00", "5:30/km", 280, "Tempo"),
-    RunEntry(6, "Thu, 08:00", "8.0 km", "44:00", "5:30/km", 560, "Tempo")
-)
-
 @Composable
 fun HistoryScreen(
     onBack: () -> Unit = {},
     vm: HistoryViewModel = viewModel()
 ) {
-
     val runs by vm.runs.collectAsState()
     val displayRuns = runs.map { it.toDisplayEntry() }
 
-    val weeklyKm = runs.sumOf { it.distanceMeters.toDouble() / 1000.0 }
-    val weeklyCal = runs.sumOf { it.caloriesBurned.toDouble() }
+    val totalKm = runs.sumOf { it.distanceMeters.toDouble() / 1000.0 }
+    val totalCal = runs.sumOf { it.caloriesBurned }
+    val totalRuns = runs.size
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -74,22 +66,22 @@ fun HistoryScreen(
             )
         }
 
-        // Weekly summary cards
+        // Summary cards — date reale
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            SummaryCard("36.7", "km this week", Modifier.weight(1f))
-            SummaryCard("6", "runs this week", Modifier.weight(1f))
-            SummaryCard("2,517", "cal burned", Modifier.weight(1f))
+            SummaryCard("%.1f".format(totalKm), "km total", Modifier.weight(1f))
+            SummaryCard("$totalRuns", "runs total", Modifier.weight(1f))
+            SummaryCard("$totalCal", "cal burned", Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "Recent runs".uppercase(),
+            text = "RECENT RUNS",
             fontSize = 11.sp,
             color = Color.White.copy(alpha = 0.45f),
             modifier = Modifier.padding(horizontal = 20.dp),
@@ -98,15 +90,45 @@ fun HistoryScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(mockRuns) { run ->
-                RunHistoryCard(run = run)
+        if (displayRuns.isEmpty()) {
+            // Empty state
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Outlined.DirectionsRun,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier.size(56.dp)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "No runs yet",
+                        fontSize = 16.sp,
+                        color = Color.White.copy(alpha = 0.3f)
+                    )
+                    Text(
+                        text = "Start your first run to see it here",
+                        fontSize = 13.sp,
+                        color = Color.White.copy(alpha = 0.2f)
+                    )
+                }
             }
-            item { Spacer(Modifier.navigationBarsPadding()) }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(displayRuns) { run ->
+                    RunHistoryCard(run = run)
+                }
+                item { Spacer(Modifier.navigationBarsPadding()) }
+            }
         }
     }
 }
@@ -150,7 +172,6 @@ fun RunHistoryCard(run: RunEntry) {
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = OrangePrimary.copy(alpha = 0.15f),
@@ -168,7 +189,6 @@ fun RunHistoryCard(run: RunEntry) {
 
             Spacer(Modifier.width(12.dp))
 
-            // Info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = run.distance,
@@ -183,7 +203,6 @@ fun RunHistoryCard(run: RunEntry) {
                 )
             }
 
-            // Stats
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = run.duration,
@@ -200,7 +219,6 @@ fun RunHistoryCard(run: RunEntry) {
 
             Spacer(Modifier.width(12.dp))
 
-            // Type badge
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = when (run.type) {

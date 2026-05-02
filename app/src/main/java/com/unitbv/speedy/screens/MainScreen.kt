@@ -19,12 +19,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.unitbv.speedy.viewmodel.MainViewModel
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.TilesOverlay
+import java.util.Calendar
 
 val OrangePrimary = Color(0xFFFF6B00)
 val DarkBg = Color(0xFF0D0D0D)
@@ -33,8 +36,17 @@ val DarkBg = Color(0xFF0D0D0D)
 fun MainScreen(
     onRunClick: () -> Unit = {},
     onHistoryClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    vm: MainViewModel = viewModel()
 ) {
+    val stats by vm.stats.collectAsState()
+    val userName by vm.userName.collectAsState()
+
+    // Reîncarcă stats de fiecare dată când intri pe Main
+    LaunchedEffect(Unit) {
+        vm.loadStats()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -43,6 +55,7 @@ fun MainScreen(
         SpeedyMap(modifier = Modifier.fillMaxSize())
 
         TopGreeting(
+            name = userName,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
@@ -51,6 +64,9 @@ fun MainScreen(
 
         BottomMapSheet(
             modifier = Modifier.align(Alignment.BottomCenter),
+            totalKm = stats.totalKm,
+            totalCal = stats.totalCal,
+            totalRuns = stats.totalRuns,
             onRunClick = onRunClick,
             onHistoryClick = onHistoryClick,
             onProfileClick = onProfileClick
@@ -80,8 +96,17 @@ fun SpeedyMap(modifier: Modifier = Modifier) {
     )
 }
 
+fun getGreeting(): String {
+    return when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+        in 5..11 -> "Good morning"
+        in 12..17 -> "Good afternoon"
+        in 18..21 -> "Good evening"
+        else -> "Good night"
+    }
+}
+
 @Composable
-fun TopGreeting(modifier: Modifier = Modifier) {
+fun TopGreeting(name: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
@@ -89,12 +114,12 @@ fun TopGreeting(modifier: Modifier = Modifier) {
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
             Text(
-                text = "Good morning",
+                text = getGreeting(),
                 fontSize = 11.sp,
                 color = Color.White.copy(alpha = 0.45f)
             )
             Text(
-                text = "Marius",
+                text = name,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.White
@@ -106,6 +131,9 @@ fun TopGreeting(modifier: Modifier = Modifier) {
 @Composable
 fun BottomMapSheet(
     modifier: Modifier = Modifier,
+    totalKm: Float,
+    totalCal: Int,
+    totalRuns: Int,
     onRunClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onProfileClick: () -> Unit
@@ -143,20 +171,22 @@ fun BottomMapSheet(
             ) {
                 Column {
                     Text(
-                        text = "Start your first run",
+                        text = if (totalRuns == 0) "Start your first run" else "Ready to run?",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.White
                     )
                     Text(
-                        text = "Brașov · tap Run to begin",
+                        text = if (totalRuns == 0) "Brașov · tap Run to begin"
+                        else "%.1f km total · tap Run".format(totalKm),
                         fontSize = 12.sp,
                         color = Color.White.copy(alpha = 0.4f)
                     )
                 }
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = OrangePrimary
+                    color = OrangePrimary,
+                    modifier = Modifier.clickable { onRunClick() }
                 ) {
                     Box(
                         modifier = Modifier.padding(10.dp),
@@ -178,9 +208,9 @@ fun BottomMapSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatChip("0", "KM", Modifier.weight(1f))
-                StatChip("0", "Cal", Modifier.weight(1f))
-                StatChip("0", "Runs", Modifier.weight(1f))
+                StatChip("%.1f".format(totalKm), "KM", Modifier.weight(1f))
+                StatChip("$totalCal", "Cal", Modifier.weight(1f))
+                StatChip("$totalRuns", "Runs", Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -229,7 +259,6 @@ fun SpeedyBottomNav(
         NavItem(icon = Icons.Outlined.Home, label = "Home", selected = true, onClick = {})
         NavItem(icon = Icons.Outlined.Place, label = "Routes", selected = false, onClick = {})
 
-        // FAB Run central
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             FloatingActionButton(
                 onClick = onRunClick,

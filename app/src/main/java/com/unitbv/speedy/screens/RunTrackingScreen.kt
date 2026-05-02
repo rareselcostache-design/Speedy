@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -22,21 +23,26 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.TilesOverlay
-import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import android.preference.PreferenceManager
 import com.unitbv.speedy.R
 import com.unitbv.speedy.viewmodel.RunTrackingViewModel
 
 @Composable
-fun RunTrackingScreen(targetDistance: String = "800m",
+fun RunTrackingScreen(
+    targetDistance: String = "5 km",
+    runType: String = "Easy",
     onFinish: () -> Unit = {},
     vm: RunTrackingViewModel = viewModel()
 ) {
     val context = LocalContext.current
+
+    // Setează tipul de run în ViewModel la start
+    LaunchedEffect(Unit) {
+        vm.setRunType(runType)
+    }
 
     var hasPermission by remember {
         mutableStateOf(
@@ -58,6 +64,9 @@ fun RunTrackingScreen(targetDistance: String = "800m",
     val currentLocation by vm.currentLocation.collectAsState()
     val routePoints by vm.routePoints.collectAsState()
 
+    // Stare pentru ecranul de sumar
+    var showSummary by remember { mutableStateOf(false) }
+
     var mapViewRef by remember { mutableStateOf<MapView?>(null) }
     var locationMarker by remember { mutableStateOf<org.osmdroid.views.overlay.Marker?>(null) }
     var borderPolyline by remember { mutableStateOf<org.osmdroid.views.overlay.Polyline?>(null) }
@@ -71,13 +80,27 @@ fun RunTrackingScreen(targetDistance: String = "800m",
     } else "--:--"
     val calories = (distanceKm * 70).toInt()
 
+    // Dacă arătăm sumarul, afișăm alt ecran
+    if (showSummary) {
+        RunSummaryScreen(
+            distanceKm = distanceKm,
+            seconds = seconds,
+            paceStr = paceStr,
+            calories = calories,
+            runType = runType,
+            onSave = {
+                vm.finishRun(onFinish)
+            },
+            onDiscard = onFinish
+        )
+        return
+    }
+
     // Urmărire locație + marker
     LaunchedEffect(currentLocation) {
         val loc = currentLocation ?: return@LaunchedEffect
         val map = mapViewRef ?: return@LaunchedEffect
-
         map.controller.animateTo(loc)
-
         if (locationMarker == null) {
             val marker = org.osmdroid.views.overlay.Marker(map).apply {
                 icon = ContextCompat.getDrawable(context, R.drawable.location_dot)
@@ -97,8 +120,6 @@ fun RunTrackingScreen(targetDistance: String = "800m",
     LaunchedEffect(routePoints) {
         val map = mapViewRef ?: return@LaunchedEffect
         if (routePoints.size < 2) return@LaunchedEffect
-
-        // Creează polyline-urile la primul punct
         if (borderPolyline == null) {
             val border = org.osmdroid.views.overlay.Polyline(map).apply {
                 outlinePaint.color = android.graphics.Color.WHITE
@@ -120,7 +141,6 @@ fun RunTrackingScreen(targetDistance: String = "800m",
             borderPolyline = border
             routePolyline = route
         }
-
         borderPolyline?.setPoints(routePoints.toMutableList())
         routePolyline?.setPoints(routePoints.toMutableList())
         map.invalidate()
@@ -160,17 +180,17 @@ fun RunTrackingScreen(targetDistance: String = "800m",
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TrackingStat(formatTime(seconds), "Time")
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.height(32.dp).width(1.dp),
                         color = Color.White.copy(alpha = 0.1f)
                     )
                     TrackingStat("%.2f".format(distanceKm), "KM")
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.height(32.dp).width(1.dp),
                         color = Color.White.copy(alpha = 0.1f)
                     )
                     TrackingStat(paceStr, "Pace")
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.height(32.dp).width(1.dp),
                         color = Color.White.copy(alpha = 0.1f)
                     )
@@ -215,7 +235,7 @@ fun RunTrackingScreen(targetDistance: String = "800m",
                         label = "Finish",
                         size = 68,
                         containerColor = Color(0xFFE53935),
-                        onClick = { vm.finishRun(onFinish) }
+                        onClick = { showSummary = true }  // arată sumarul, nu navighează direct
                     )
                     ControlButton(
                         icon = Icons.Outlined.Lock,
@@ -232,25 +252,177 @@ fun RunTrackingScreen(targetDistance: String = "800m",
 }
 
 @Composable
-fun TrackingStat(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun RunSummaryScreen(
+    distanceKm: Float,
+    seconds: Int,
+    paceStr: String,
+    calories: Int,
+    runType: String,
+    onSave: () -> Unit,
+    onDiscard: () -> Unit
+) {
+    val minutes = seconds / 60
+    val secs = seconds % 60
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBg)
+            .statusBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(32.dp))
+
+        // Header
         Text(
-            text = value,
-            fontSize = 20.sp,
+            text = "Run complete",
+            fontSize = 13.sp,
+            color = Color.White.copy(alpha = 0.45f),
+            letterSpacing = 0.08.sp
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "%.2f km".format(distanceKm),
+            fontSize = 56.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
-        Text(
-            text = label,
-            fontSize = 10.sp,
-            color = Color.White.copy(alpha = 0.4f)
-        )
+
+        // Type badge
+        Spacer(Modifier.height(8.dp))
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = when (runType) {
+                "Race" -> Color(0xFFE53935).copy(alpha = 0.15f)
+                "Tempo" -> OrangePrimary.copy(alpha = 0.15f)
+                else -> Color.White.copy(alpha = 0.08f)
+            }
+        ) {
+            Text(
+                text = runType,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = when (runType) {
+                    "Race" -> Color(0xFFE53935)
+                    "Tempo" -> OrangePrimary
+                    else -> Color.White.copy(alpha = 0.5f)
+                },
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+            )
+        }
+
+        Spacer(Modifier.height(32.dp))
+
+        // Stats grid
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            SummaryStatCard(
+                value = "%d:%02d".format(minutes, secs),
+                label = "Duration",
+                modifier = Modifier.weight(1f)
+            )
+            SummaryStatCard(
+                value = paceStr,
+                label = "Avg pace /km",
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            SummaryStatCard(
+                value = "$calories",
+                label = "Calories",
+                modifier = Modifier.weight(1f)
+            )
+            SummaryStatCard(
+                value = if (distanceKm >= 1f) "%.1f km".format(distanceKm) else "${(distanceKm * 1000).toInt()} m",
+                label = "Distance",
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        // Buttons
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Button(
+                onClick = onSave,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+            ) {
+                Icon(Icons.Outlined.Save, null, tint = Color.White)
+                Spacer(Modifier.width(8.dp))
+                Text("Save run", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+            OutlinedButton(
+                onClick = onDiscard,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White.copy(alpha = 0.4f)),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.15f))
+                )
+            ) {
+                Text("Discard", fontSize = 15.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun SummaryStatCard(value: String, label: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White.copy(alpha = 0.05f)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = value,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.4f)
+            )
+        }
+    }
+}
+
+@Composable
+fun TrackingStat(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(label, fontSize = 10.sp, color = Color.White.copy(alpha = 0.4f))
     }
 }
 
 @Composable
 fun ControlButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     size: Int,
     containerColor: Color,
@@ -263,12 +435,7 @@ fun ControlButton(
             containerColor = containerColor,
             modifier = Modifier.size(size.dp)
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size((size * 0.42f).dp)
-            )
+            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size((size * 0.42f).dp))
         }
         Spacer(Modifier.height(6.dp))
         Text(label, fontSize = 11.sp, color = Color.White.copy(alpha = 0.5f))

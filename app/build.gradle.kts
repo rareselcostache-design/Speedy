@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.unitbv.speedy"
-    compileSdk = 35 // Sfat: Folosește 35, 36 e încă în preview și poate da erori ciudate
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.unitbv.speedy"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 

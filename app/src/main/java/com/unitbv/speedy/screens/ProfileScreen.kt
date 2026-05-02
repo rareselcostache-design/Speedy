@@ -17,16 +17,25 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.unitbv.speedy.viewmodel.ProfileViewModel
 
 @Composable
-fun ProfileScreen(onBack: () -> Unit = {},onLogout: () -> Unit = {}) {
+fun ProfileScreen(
+    onBack: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    vm: ProfileViewModel = viewModel()
+) {
+    val stats by vm.stats.collectAsState()
+    val displayName by vm.displayName.collectAsState()
+    val initials by vm.initials.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
             .statusBarsPadding()
     ) {
-        // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -37,12 +46,7 @@ fun ProfileScreen(onBack: () -> Unit = {},onLogout: () -> Unit = {}) {
                 Icon(Icons.Outlined.ArrowBack, contentDescription = null, tint = Color.White)
             }
             Spacer(Modifier.width(8.dp))
-            Text(
-                text = "Profile",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
-            )
+            Text("Profile", fontSize = 20.sp, fontWeight = FontWeight.Medium, color = Color.White)
         }
 
         LazyColumn(
@@ -66,7 +70,7 @@ fun ProfileScreen(onBack: () -> Unit = {},onLogout: () -> Unit = {}) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "MA",
+                            text = initials,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
                             color = OrangePrimary
@@ -74,15 +78,10 @@ fun ProfileScreen(onBack: () -> Unit = {},onLogout: () -> Unit = {}) {
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "Marius Arzoiu",
+                        text = displayName,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.White
-                    )
-                    Text(
-                        text = "Brașov, Romania",
-                        fontSize = 13.sp,
-                        color = Color.White.copy(alpha = 0.4f)
                     )
                 }
             }
@@ -90,7 +89,7 @@ fun ProfileScreen(onBack: () -> Unit = {},onLogout: () -> Unit = {}) {
             // All-time stats
             item {
                 Text(
-                    text = "All-time stats".uppercase(),
+                    text = "ALL-TIME STATS",
                     fontSize = 11.sp,
                     color = Color.White.copy(alpha = 0.45f),
                     letterSpacing = 0.08.sp
@@ -100,41 +99,24 @@ fun ProfileScreen(onBack: () -> Unit = {},onLogout: () -> Unit = {}) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    BigStatCard("142.6", "km total", Modifier.weight(1f))
-                    BigStatCard("24", "runs", Modifier.weight(1f))
+                    BigStatCard("%.1f".format(stats.totalKm), "km total", Modifier.weight(1f))
+                    BigStatCard("${stats.totalRuns}", "runs", Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    BigStatCard("5:42", "best pace", Modifier.weight(1f))
-                    BigStatCard("9,972", "cal burned", Modifier.weight(1f))
+                    BigStatCard(stats.bestPace, "best pace /km", Modifier.weight(1f))
+                    BigStatCard("${stats.totalCal}", "cal burned", Modifier.weight(1f))
                 }
             }
 
-            // Personal bests
+            // Settings
             item {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Personal bests".uppercase(),
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.45f),
-                    letterSpacing = 0.08.sp
-                )
-                Spacer(Modifier.height(10.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PBRow(label = "5 km", value = "24:10", icon = Icons.Outlined.EmojiEvents)
-                    PBRow(label = "10 km", value = "52:30", icon = Icons.Outlined.EmojiEvents)
-                    PBRow(label = "Half marathon", value = "1:58:00", icon = Icons.Outlined.EmojiEvents)
-                }
-            }
-
-            // Settings section
-            item {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Settings".uppercase(),
+                    text = "SETTINGS",
                     fontSize = 11.sp,
                     color = Color.White.copy(alpha = 0.45f),
                     letterSpacing = 0.08.sp
@@ -148,7 +130,8 @@ fun ProfileScreen(onBack: () -> Unit = {},onLogout: () -> Unit = {}) {
                     SettingsRow(
                         icon = Icons.Outlined.Logout,
                         label = "Log out",
-                        labelColor = Color(0xFFE53935)
+                        labelColor = Color(0xFFE53935),
+                        onClick = onLogout
                     )
                 }
             }
@@ -165,64 +148,9 @@ fun BigStatCard(value: String, label: String, modifier: Modifier = Modifier) {
         shape = RoundedCornerShape(14.dp),
         color = Color.White.copy(alpha = 0.05f)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Text(
-                text = value,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.4f)
-            )
-        }
-    }
-}
-
-@Composable
-fun PBRow(label: String, value: String, icon: ImageVector) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.05f)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = OrangePrimary.copy(alpha = 0.12f),
-                modifier = Modifier.size(38.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        tint = OrangePrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = label,
-                fontSize = 14.sp,
-                color = Color.White,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = value,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = OrangePrimary
-            )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(text = label, fontSize = 12.sp, color = Color.White.copy(alpha = 0.4f))
         }
     }
 }
@@ -231,40 +159,44 @@ fun PBRow(label: String, value: String, icon: ImageVector) {
 fun SettingsRow(
     icon: ImageVector,
     label: String,
-    labelColor: Color = Color.White
+    labelColor: Color = Color.White,
+    onClick: () -> Unit = {}
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent
+        color = Color.Transparent,
+        onClick = onClick
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = if (labelColor == Color.White) Color.White.copy(alpha = 0.4f) else labelColor,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(14.dp))
-            Text(
-                text = label,
-                fontSize = 15.sp,
-                color = labelColor,
-                modifier = Modifier.weight(1f)
-            )
-            if (labelColor == Color.White) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
-                    Icons.Outlined.ChevronRight,
+                    icon,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.2f),
-                    modifier = Modifier.size(18.dp)
+                    tint = if (labelColor == Color.White) Color.White.copy(alpha = 0.4f) else labelColor,
+                    modifier = Modifier.size(20.dp)
                 )
+                Spacer(Modifier.width(14.dp))
+                Text(
+                    text = label,
+                    fontSize = 15.sp,
+                    color = labelColor,
+                    modifier = Modifier.weight(1f)
+                )
+                if (labelColor == Color.White) {
+                    Icon(
+                        Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.2f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
+            HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
         }
-        Divider(color = Color.White.copy(alpha = 0.05f))
     }
 }
