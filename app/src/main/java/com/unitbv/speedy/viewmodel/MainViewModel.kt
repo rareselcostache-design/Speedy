@@ -41,9 +41,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadUserName() {
-        val user = FirebaseAuth.getInstance().currentUser
-        _userName.value = user?.displayName?.split(" ")?.firstOrNull()
-            ?: user?.email?.substringBefore("@")
-                    ?: "there"
+        val auth = FirebaseAuth.getInstance()
+
+        auth.currentUser?.let { user ->
+            _userName.value = user.displayName?.split(" ")?.firstOrNull()
+                ?: user.email?.substringBefore("@")
+                        ?: "there"
+            return
+        }
+
+        auth.addAuthStateListener(object : FirebaseAuth.AuthStateListener {
+            override fun onAuthStateChanged(firebaseAuth: FirebaseAuth) {
+                val user = firebaseAuth.currentUser ?: return
+                _userName.value = user.displayName?.split(" ")?.firstOrNull()
+                    ?: user.email?.substringBefore("@")
+                            ?: "there"
+                firebaseAuth.removeAuthStateListener(this)
+            }
+        })
     }
 }

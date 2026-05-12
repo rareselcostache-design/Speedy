@@ -19,13 +19,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.location.LocationServices
+import com.unitbv.speedy.R
 import com.unitbv.speedy.viewmodel.MainViewModel
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.TilesOverlay
 import java.util.Calendar
 
@@ -77,23 +81,99 @@ fun MainScreen(
 @Composable
 fun SpeedyMap(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    AndroidView(
-        modifier = modifier,
-        factory = {
-            Configuration.getInstance().apply {
-                load(context, PreferenceManager.getDefaultSharedPreferences(context))
-                userAgentValue = context.packageName
+    var mapView by remember { mutableStateOf<MapView?>(null) }
+    var userLocation by remember { mutableStateOf<GeoPoint?>(null) }
+    var isOffCenter by remember { mutableStateOf(false) }
+
+    val fusedClient = remember {
+        LocationServices.getFusedLocationProviderClient(context)
+    }
+
+    LaunchedEffect(Unit) {
+        try {
+            fusedClient.lastLocation.addOnSuccessListener { location ->
+                location ?: return@addOnSuccessListener
+                val geoPoint = GeoPoint(location.latitude, location.longitude)
+                userLocation = geoPoint
+                mapView?.controller?.animateTo(geoPoint)
+
+                val marker = Marker(mapView).apply {
+                    position = geoPoint
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    icon = ContextCompat.getDrawable(context, R.drawable.ic_location_dot)
+                    title = "You are here"
+                }
+                mapView?.overlays?.add(marker)
+                mapView?.invalidate()
             }
-            MapView(context).apply {
-                setTileSource(TileSourceFactory.MAPNIK)
-                setMultiTouchControls(true)
-                controller.setZoom(16.0)
-                controller.setCenter(GeoPoint(45.6427, 25.5887))
-                overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERT_COLORS)
-                zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
+        } catch (e: SecurityException) { }
+    }
+
+    Box(modifier = modifier) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = {
+                Configuration.getInstance().apply {
+                    load(context, PreferenceManager.getDefaultSharedPreferences(context))
+                    userAgentValue = context.packageName
+                }
+                MapView(context).apply {
+                    setTileSource(TileSourceFactory.MAPNIK)
+                    setMultiTouchControls(true)
+                    controller.setZoom(17.0)
+                    controller.setCenter(GeoPoint(45.6427, 25.5887))
+                    overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERT_COLORS)
+                    zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
+
+                    // Detectează când userul mișcă harta
+                    addMapListener(object : org.osmdroid.events.MapListener {
+                        override fun onScroll(event: org.osmdroid.events.ScrollEvent): Boolean {
+                            isOffCenter = true
+                            return false
+                        }
+                        override fun onZoom(event: org.osmdroid.events.ZoomEvent): Boolean {
+                            return false
+                        }
+                    })
+
+                    mapView = this
+                }
+            }
+        )
+
+        // Buton recenter — apare doar când harta e deplasată
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isOffCenter,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 160.dp),
+            enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut()
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = Color(0xFF1A1A1A),
+                shadowElevation = 8.dp,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clickable {
+                        userLocation?.let { loc ->
+                            mapView?.controller?.animateTo(loc)
+                            isOffCenter = false
+                        }
+                    }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.MyLocation,
+                        contentDescription = "Recenter",
+                        tint = OrangePrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
-    )
+    }
 }
 
 fun getGreeting(): String {

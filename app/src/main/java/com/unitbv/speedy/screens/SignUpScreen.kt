@@ -1,5 +1,6 @@
 package com.unitbv.speedy.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,12 +16,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.unitbv.speedy.R
 
 @Composable
 fun SignUpScreen(
@@ -101,11 +105,12 @@ fun SignUpScreen(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "S",
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_speedy_logo),
+                        contentDescription = "Speedy logo",
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
                     )
                 }
             }
@@ -246,7 +251,11 @@ fun SignUpScreen(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(text = "I agree to the ", color = Color.White.copy(alpha = 0.4f), fontSize = 13.sp)
-                TextButton(onClick = {}, contentPadding = PaddingValues(0.dp)) {
+                val uriHandler = LocalUriHandler.current
+                TextButton(
+                    onClick = { uriHandler.openUri("https://speedy-privacy-web.vercel.app/") },
+                    contentPadding = PaddingValues(0.dp)
+                ) {
                     Text(
                         text = "Terms & Privacy Policy",
                         color = OrangePrimary,

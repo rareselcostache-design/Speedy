@@ -102,14 +102,19 @@ fun AppNavigation(auth: FirebaseAuth) {
                 onSignUpClick = { name, email, password ->
                     if (email.isNotEmpty() && password.isNotEmpty()) {
                         auth.createUserWithEmailAndPassword(email, password)
-                            .addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    navController.navigate("main") {
-                                        popUpTo("signup") { inclusive = true }
+                            .addOnSuccessListener { result ->
+                                val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                                    .setDisplayName(name)
+                                    .build()
+                                result.user?.updateProfile(profileUpdates)
+                                    ?.addOnCompleteListener {
+                                        navController.navigate("main") {
+                                            popUpTo("signup") { inclusive = true }
+                                        }
                                     }
-                                } else {
-                                    Toast.makeText(context, "Eroare Sign Up: ${task.exception?.message}", Toast.LENGTH_LONG).show()
-                                }
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(context, "Eroare Sign Up: ${e.message}", Toast.LENGTH_LONG).show()
                             }
                     }
                 },
